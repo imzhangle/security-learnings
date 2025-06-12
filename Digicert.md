@@ -116,3 +116,127 @@ Below is a structured response addressing each of your points, tailored to DigiC
 ---
 
 If you'd like, I can also help draft a **vendor evaluation report template**, **RFP questions**, or **risk assessment questionnaire** specific to DigiCert and Swiss banking compliance. Let me know!
+
+
+To support **Santander Private Bank Switzerland** employees authenticating into a **DigiCert Signing Room** on behalf of customers, the integration must ensure secure and compliant access using **Single Sign-On (SSO)** while maintaining strict controls for digital signature workflows.
+
+Below is a detailed breakdown tailored to your scenario:
+
+---
+
+## 🔐 **Use Case: Santander Employee SSO to DigiCert Signing Room (On Behalf of Customer)**
+
+### 🎯 **Objective**
+Allow authenticated **Santander employees** to securely enter a **DigiCert Signing Room**, where they can assist **customers** in signing documents (e.g., banking agreements, investment forms), ensuring:
+- Strong identity verification of the employee
+- Non-repudiation of signatures
+- Compliance with Swiss and EU regulations (ZertES, eIDAS, FINMA)
+- Auditability and logging of all actions
+
+---
+
+## ✅ **Key Components**
+
+### 1. **SSO Integration**
+- **Authentication Flow:**  
+  Employees authenticate via Santander’s internal Identity Provider (IdP) using SAML or OAuth2/OpenID Connect (OIDC).
+- **Supported IdPs:**  
+  Azure AD, Okta, Ping Identity, ADFS, etc.
+- **Multi-Factor Authentication (MFA):**  
+  Must be enforced as part of the SSO flow to meet LoA3/LoA4 requirements under ZertES/eIDAS.
+
+### 2. **Signing Room Access Control**
+- **User Mapping:**  
+  DigiCert maps the authenticated employee identity (via SSO) to their account in the Signing Room.
+- **Role Assignment:**  
+  Define roles such as “Signer,” “CC,” or “In Person signer” depending on the employee's role in the document workflow.
+- **Customer Representation:**  
+  The employee may act as a representative of the customer. This should be documented and approved by the customer beforehand, ideally through a power of attorney or similar legal instrument.
+
+### 3. **Identity Proofing & Verification**
+- **Employee Onboarding:**  
+  Ensure that each employee has undergone appropriate identity proofing before being granted access to the Signing Room system.
+- **Customer Verification:**  
+  Customers must also go through identity verification steps (e.g., video ID check, government ID upload, SMS/email OTP) when required by the Signing Room configuration.
+
+---
+
+## 🛡️ **Security Controls**
+
+| Control | Description |
+|--------|-------------|
+| **Session Timeout** | Enforce short session timeouts; terminate after inactivity or after signing completion |
+| **Device Fingerprinting** | Optional: Capture device metadata for audit |
+| **Audit Trail** | All access and signing events logged in DigiCert and forwarded to SIEM |
+| **Access Logging** | Record who accessed which Signing Room, when, and from where |
+| **Consent & Authorization** | Document that the employee has authorization to act on behalf of the customer |
+
+---
+
+## 🧩 **Technical Workflow Summary**
+
+1. **Employee Authentication:**
+   - Employee logs into internal IdP (e.g., Azure AD) with MFA.
+2. **SSO to DigiCert Signing Room:**
+   - Redirects to DigiCert via SAML/OIDC assertion.
+   - Employee gains access to assigned Signing Rooms.
+3. **Customer Signing Assistance:**
+   - Employee opens the Signing Room and either:
+     - Guides the customer through the signing process remotely (if customer is co-present).
+     - Signs on behalf of the customer based on prior authorization.
+4. **Logging & Audit:**
+   - All activities are recorded and sent to SIEM for monitoring.
+
+---
+
+## 📜 **Compliance Considerations**
+
+| Regulation | Requirement | DigiCert Support |
+|------------|-------------|------------------|
+| **eIDAS (EU)** | QES/QSeal compliance | ✅ Qualified certificates |
+| **ZertES (Switzerland)** | Trust services regulation | ✅ DigiCert Switzerland AG supports ZertES |
+| **FINMA Circular 2022/1** | IT Risk Management | ⚠️ Depends on internal controls and integration |
+| **FEDPI / GDPR-like** | Data protection | ✅ Swiss-based operations available |
+| **Swiss Banking Secrecy** | Confidentiality of customer data | ⚠️ Requires contractual assurances |
+
+---
+
+## 📋 **Recommendations**
+
+1. **Enable SSO + MFA for DigiCert Signing Rooms**
+   - Use enterprise-grade IdP (Azure AD, Okta, etc.)
+   - Require MFA at login to meet authentication assurance levels
+
+2. **Implement Role-Based Access Control (RBAC)**
+   - Restrict access to Signing Rooms based on job function
+   - Ensure segregation of duties
+
+3. **Maintain Legal Documentation**
+   - Keep records of customer authorization for employee-assisted signing
+   - Retain these records for audit purposes (5–10 years)
+
+4. **Integrate Logs with SIEM**
+   - Forward DigiCert Signing Room logs via API or syslog
+   - Monitor for anomalies (e.g., unauthorized access, repeated failed logins)
+
+5. **Perform Regular Audits**
+   - Review access logs and usage patterns
+   - Revoke access for terminated employees promptly
+
+6. **Evaluate Hybrid or On-Prem HSMs if Required**
+   - If cryptographic key control is critical, consider on-prem HSMs or CMEK options
+
+---
+
+## 📄 Sample RFP Questions for DigiCert (Optional)
+If you're preparing a formal vendor evaluation:
+
+- Does your Signing Room support SSO via enterprise IdPs?
+- How do you handle identity proofing for both employees and end users?
+- What logging capabilities exist for audit and SIEM integration?
+- Are your Signing Rooms compliant with Swiss ZertES law?
+- Can employees sign on behalf of customers? Under what conditions?
+
+---
+
+Would you like a **diagram of the SSO flow**, a **template for internal approval documentation**, or help drafting a **technical integration plan** with your IAM team? Let me know how I can assist further.
