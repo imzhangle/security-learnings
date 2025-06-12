@@ -108,3 +108,118 @@ Not necessarily. Here are options:
 ---
 
 Would you like help drafting a message to DigiCert or SwissSign requesting information about qualified certificates for QES?
+
+Sure! Here's a **diagram** showing how **DocuSign SignServer** fits into your workflow when integrating with a **Trusted Service Provider (TSP)** like **DigiCert or SwissSign**, especially for **Qualified Electronic Signature (QES)** use cases.
+
+Since I can’t draw images directly, I’ll provide you with a **text-based diagram** that you can visualize or convert into an actual flowchart using tools like **Lucidchart**, **draw.io (diagrams.net)**, or **Microsoft Visio**.
+
+---
+
+## 🧾 DocuSign SignServer Architecture Diagram (Text Version)
+
+```
++---------------------+
+|    DocuSign UI      |
+|  (Envelope Creation)|
++----------+----------+
+           |
+           | 1. Prepare and send envelope
+           v
++-----------------------------+
+|     DocuSign Platform       |
+|  (Routing, Workflow, etc.)  |
++--------------+--------------+
+               |
+               | 2. Detect QES requirement
+               v
++-------------------------------+
+|   DocuSign SignServer         |
+|  (On-premises or Cloud)       |
++-------------------------------+
+               |
+               | 3. Request signature using
+               |    qualified certificate
+               v
++-------------------------------+
+|   Secure Signature Device     |
+|  (HSM / Smart Card / USB Token)|
++-------------------------------+
+               |
+               | 4. Certificate from TSP
+               |    (e.g., DigiCert, SwissSign)
+               v
++-------------------------------+
+|   Qualified Trust Services    |
+|  (Time Stamp, Validation, etc.)|
++-------------------------------+
+               |
+               | 5. Return signed document
+               v
++-----------------------------+
+|     DocuSign Platform       |
+|  (Finalize & Notify Users)  |
++-----------------------------+
+```
+
+---
+
+## 🔍 Explanation of Each Step
+
+### 1. **User creates an envelope in the DocuSign UI**
+- The user prepares a document and defines signers.
+- Some documents may require **QES compliance** based on template, metadata, or business rules.
+
+### 2. **Document sent to DocuSign Platform**
+- Envelope is processed by DocuSign’s system.
+- If QES is required, the system routes the document to **SignServer** instead of using standard signing.
+
+### 3. **DocuSign SignServer handles the advanced signing**
+- SignServer connects to secure infrastructure (like an HSM).
+- It applies a digital signature using a **qualified certificate** stored securely.
+
+### 4. **Secure Signature Creation Device (SSCD)**
+- A hardware security module (HSM), smart card, or token stores the private key.
+- The key never leaves this device — a requirement under eIDAS for QES.
+
+### 5. **Trust services (timestamping, validation)**
+- A **qualified Time Stamp Authority (TSA)** ensures long-term validity.
+- Optional: Validation via OCSP or CRL to verify certificate status at time of signing.
+
+### 6. **Signed document returned to DocuSign**
+- Final PDF with full QES metadata is uploaded back to DocuSign.
+- All users are notified as usual.
+
+---
+
+## 📦 Tools Used in This Setup
+
+| Component | Description |
+|----------|-------------|
+| **DocuSign UI** | Front-end for preparing and sending documents |
+| **DocuSign Platform** | Core DocuSign system managing workflows and envelopes |
+| **DocuSign SignServer** | Backend signing engine supporting QES |
+| **HSM (e.g., Thales, Utimaco, AWS CloudHSM)** | Secure storage of private keys |
+| **DigiCert / SwissSign** | Issuers of qualified certificates |
+| **Qualified TSA** | Provides trusted timestamping |
+
+---
+
+## 📨 Want a Visual Version?
+
+You can copy the structure above into any diagramming tool. Here’s how:
+
+1. Go to [https://app.diagrams.net](https://app.diagrams.net) (free online tool).
+2. Create rectangles for each component.
+3. Connect them with arrows according to the steps.
+4. Save or export as PNG/PDF.
+
+---
+
+## 📩 Next Steps
+
+Would you like:
+- 📄 A downloadable version of this diagram (as a `.drawio` or `.vsdx` file)?
+- 📋 Sample configuration settings for deploying SignServer?
+- 🧰 Help choosing between different HSM vendors?
+
+Let me know what you'd like next!
