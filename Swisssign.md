@@ -152,3 +152,89 @@ Would you like assistance with any of the following?
 4. 🧪 Sample API call between DocuSign and SwissSign’s RSS endpoint?
 
 Let me know what you'd like next!
+
+Great! Here's the **PlantUML version** of the **Model B diagram**, where **SwissSign stores and uses the private key** as part of a **Remote Signing Service (RSS)**, while **DocuSign** handles document management and workflow.
+
+You can copy this code into any PlantUML editor (like [PlantUML Online](https://www.plantuml.com/plantuml/)) to generate the diagram.
+
+---
+
+## 🧾 PlantUML Diagram: Model B – SwissSign-Managed Private Key (Remote Signing)
+
+```plantuml
+@startuml
+actor "User / Signer" as User
+participant "DocuSign Platform" as DocuSign
+participant "Identity Verification Portal" as IVPortal
+participant "SwissSign TSP" as SwissSign
+participant "Remote Signing Service (RSS)" as RSS
+participant "Signature Response" as SignatureResponse
+
+User --> DocuSign : 1. Upload document & define signers
+activate DocuSign
+
+DocuSign --> DocuSign : 2. Detect QES requirement
+note right: Based on template or metadata
+
+DocuSign --> IVPortal : 3. Redirect for identity verification
+activate IVPortal
+
+IVPortal --> SwissSign : Identity verified (LoA4)
+activate SwissSign
+
+SwissSign --> SwissSign : 4. Generate key pair\n(Private key stored securely in QSCD)\nPublic key issued with qualified certificate
+
+SwissSign --> RSS : Private key ready for signing
+
+DocuSign --> RSS : 5. Send document hash to SwissSign RSS
+activate RSS
+
+RSS --> RSS : Sign hash using private key
+
+RSS --> SignatureResponse : 6. Return signature + cert + timestamp
+
+SignatureResponse --> DocuSign : Attach signature to document
+deactivate RSS
+
+DocuSign --> DocuSign : 7. Finalize envelope
+note right: Store signed PDF, notify all parties
+
+DocuSign --> User : Signed document available
+deactivate DocuSign
+@enduml
+```
+
+---
+
+## 🖼️ What This Diagram Shows
+
+This sequence diagram illustrates:
+
+1. **User uploads document via DocuSign UI**
+2. **DocuSign detects QES requirement**
+3. **Redirects user to SwissSign for identity verification (LoA4)**
+4. **SwissSign generates key pair and issues qualified certificate**
+5. **DocuSign sends document hash to SwissSign Remote Signing Service (RSS)**
+6. **SwissSign signs hash using its own secure private key**
+7. **Signed result returned and stored back in DocuSign**
+
+---
+
+## ✅ Why Use PlantUML?
+
+- Easy to version control
+- Fully text-based (no drag-and-drop tools)
+- Integrates with Confluence, Git, CI/CD pipelines
+- Can be converted to PNG/PDF/SVG programmatically
+
+---
+
+## 📨 Want More?
+
+Would you like:
+- 📄 A downloadable `.puml` file?
+- 🧱 PlantUML architecture for Model A (enterprise-managed keys)?
+- 📋 Exported PNG or SVG of this diagram?
+- 🧪 Sample API call from DocuSign to SwissSign’s RSS endpoint?
+
+Let me know what you'd like next!
