@@ -430,3 +430,127 @@ Would you like me to help you:
 - Or generate an **architecture diagram showing the integration flow**?
 
 Just let me know how I can assist further!
+
+
+
+### 🌿 **PlantUML Diagram: Mobile App Hardening Architecture with BioCatch, Build38 SEAL, Digital.ai, and Appdome**
+
+Below is a **PlantUML script** that visually represents the full-stack mobile app security architecture for Open Banking or fintech apps.
+
+This diagram shows how each component integrates — from the user to core banking systems — and includes optional integration paths using **Appdome**, **Digital.ai**, and **Build38 SEAL**.
+
+---
+
+## 🧩 PlantUML Script
+
+```plantuml
+@startuml
+skinparam linetype ortho
+
+package "Mobile Device" {
+  [User] as user
+  [Mobile Banking App] as mobile_app
+}
+
+package "Security SDKs" {
+  [BioCatch SDK] as biocatch
+  [Build38 SEAL SDK] as build38
+  [Digital.ai Protection] as digitalai
+  [Appdome Protections] as appdome
+}
+
+package "Backend Services" {
+  [ODS API Gateway] as ods
+  [Core Banking Systems] as corebanking
+}
+
+user --> mobile_app
+
+mobile_app --> digitalai : Optional
+mobile_app --> build38 : Optional
+mobile_app --> appdome : Alternative
+
+digitalai --> biocatch
+build38 --> biocatch
+appdome --> biocatch
+
+biocatch --> ods : Behavioral Risk Score
+build38 --> ods : Secure Communication
+digitalai --> ods : Standard TLS
+appdome --> ods : Standard TLS
+
+ods --> corebanking : Core Banking Integration
+
+note right of digitalai
+  Code Obfuscation
+  Anti-Tampering
+  Anti-Debugging
+end note
+
+note right of build38
+  Secure Comm (SEAL)
+  MITM Detection
+  Device Integrity
+end note
+
+note right of appdome
+  No-code Protection
+  Certificate Pinning
+  Anti-Debugging
+end note
+
+note right of biocatch
+  Behavioral Biometrics
+  Passive Authentication
+  Fraud Detection
+end note
+
+note right of ods
+  PSD2/UK OB/CDR Compliant
+  OAuth2 / Consent Mgmt
+end note
+@enduml
+```
+
+---
+
+## 📄 How to Use This
+
+1. **Copy the code above**
+2. Paste it into any **PlantUML editor**, such as:
+   - [https://www.plantuml.com/plantuml](https://www.plantuml.com/plantuml)
+   - [https://plantuml.io](https://plantuml.io)
+   - Visual Studio Code with PlantUML plugin
+   - draw.io (with PlantUML integration)
+   - Any IDE/plugin that supports PlantUML
+
+3. Render the diagram — you’ll get something like this:
+
+```
+[User] → [Mobile Banking App]
+          ↓
+┌───────────────────────┐
+│ Security SDK Options  │
+├───────────────────────┤
+│ - Digital.ai (Code Obf)│
+│ - Build38 (Secure Comm)│
+│ - Appdome (No-code)    │
+└───────────────────────┘
+          ↓
+     [BioCatch SDK]
+          ↓
+     [ODS API Gateway]
+          ↓
+ [Core Banking Systems]
+```
+
+---
+
+## 📎 Want This as a File?
+
+Would you like me to:
+- Generate a **PNG or PDF version** of this diagram?
+- Export it in **draw.io / Visio format**?
+- Provide a **PowerPoint slide** with the diagram for internal use?
+
+Just let me know and I’ll prepare the file for download or email!
