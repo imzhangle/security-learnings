@@ -554,3 +554,160 @@ Would you like me to:
 - Provide a **PowerPoint slide** with the diagram for internal use?
 
 Just let me know and I’ll prepare the file for download or email!
+
+
+
+### 🌿 **PlantUML Diagram with Detailed Feature Breakdown**
+
+Below is an enhanced **PlantUML script** that includes **detailed features and sub-components** for each tool:
+
+- **BioCatch**
+- **Build38 SEAL**
+- **Digital.ai Application Protection**
+- **Appdome**
+- **ODS API Gateway (Open Digital Service)**
+
+This version shows:
+- What each component does
+- How they integrate
+- Their unique security capabilities
+
+---
+
+## 🧩 PlantUML Script – With Feature Details
+
+```plantuml
+@startuml
+skinparam linetype ortho
+
+title Mobile App Hardening Architecture with BioCatch, Build38, Digital.ai, and Appdome
+
+package "Mobile Device" {
+  [User] as user
+  [Mobile Banking App] as mobile_app
+}
+
+package "Security SDKs" {
+  [BioCatch SDK] as biocatch
+  [Build38 SEAL SDK] as build38
+  [Digital.ai Protection] as digitalai
+  [Appdome Protections] as appdome
+}
+
+package "Backend Services" {
+  [ODS API Gateway] as ods
+  [Core Banking Systems] as corebanking
+}
+
+user --> mobile_app
+
+mobile_app --> digitalai : Code Obfuscation\nAnti-Tampering\nAnti-Debugging
+mobile_app --> build38 : Secure Communication\nMITM Detection\nDevice Integrity
+mobile_app --> appdome : Certificate Pinning\nAnti-Debugging\nNo-code Integration
+
+digitalai --> biocatch : Runtime Environment\nPassive Authentication
+build38 --> biocatch : Device Risk Score\nSession Validation
+appdome --> biocatch : Behavioral Monitoring\nOptional Integration
+
+biocatch --> ods : Fraud Engine\nRisk Scoring\nConsent Validation
+build38 --> ods : Secure Comm\nSEAL Protocol\nRuntime MITM Detection
+digitalai --> ods : Standard TLS\nCode-Level Protection
+appdome --> ods : Standard TLS\nWrapper-Based Protection
+
+ods --> corebanking : Account Info\nPayments\nPSD2/CDR Compliance
+
+note right of digitalai
+  == Digital.ai ==
+  - Code Obfuscation
+  - String Encryption
+  - Control Flow Obfuscation
+  - Anti-Tampering / Debugging
+  - Reflection Obfuscation
+  - Symbol Stripping
+  - Used in: Enterprise apps,\nRegulated fintech
+end note
+
+note right of build38
+  == Build38 SEAL ==
+  - Proprietary Secure Layer
+  - MITM Detection
+  - Device Integrity Binding
+  - Session-Specific Encryption
+  - Hook Detection (Frida/Xposed)
+  - Fraud Engine Integration
+  - Used in: Open Banking,\nEU Fintech
+end note
+
+note right of appdome
+  == Appdome ==
+  - No-code Integration
+  - Certificate Pinning
+  - Anti-Tampering
+  - Anti-Debugging
+  - MITM Detection Plugin
+  - WAF Integration
+  - CI/CD Friendly
+  - Best for: Internal tools,\nNon-regulated apps
+end note
+
+note right of biocatch
+  == BioCatch ==
+  - Behavioral Biometrics
+  - Passive Authentication
+  - Continuous Monitoring
+  - Device Risk Scoring
+  - Fraud Detection Engine
+  - Used in: Banking,\nE-commerce
+end note
+
+note right of ods
+  == ODS API Gateway ==
+  - PSD2/UK OB/CDR Compliant
+  - OAuth2/OpenID Connect
+  - Consent Management
+  - TPP Access
+  - Transaction APIs
+  - Regulatory Logging
+end note
+
+note right of corebanking
+  == Core Banking ==
+  - Account Information
+  - Payments Processing
+  - Customer Data
+  - Legacy System
+  - ISO 27001 / PCI DSS
+end note
+
+@enduml
+```
+
+---
+
+## 📄 How to Use This
+
+You can paste this into any **PlantUML editor**, such as:
+
+- [https://www.plantuml.com/plantuml](https://www.plantuml.com/plantuml)
+- [https://plantuml.io](https://plantuml.io)
+- Visual Studio Code (with PlantUML plugin)
+- draw.io + PlantUML integration
+- Any IDE that supports PlantUML
+
+Once rendered, it will produce a **fully labeled architecture diagram** showing:
+
+- The **flow from user to backend**
+- Each **tool’s key features**
+- **Integration points**
+- **Use cases and compliance standards**
+
+---
+
+## 📎 Want a File?
+
+Would you like me to generate this as:
+- A downloadable **PDF or PNG image**
+- An editable **PlantUML (.puml) file**
+- A **draw.io or PowerPoint version**
+
+Just let me know and I’ll prepare it for you!
