@@ -195,3 +195,138 @@ Below is a detailed **comparison table** of **Appdome** and **build38** with res
 ---
 
 If you have further questions or need clarification on any aspect of this comparison, feel free to ask!
+
+
+Got it — you're asking whether **Appdome** and **Build38 (SEE)** can be **integrated into your existing mobile app development pipeline**, especially in an **on-premises setup**.
+
+Let’s compare how both platforms integrate with a **mobile CI/CD pipeline**, including support for:
+- Source code repositories
+- Build tools (e.g., Jenkins, GitLab CI, Azure DevOps)
+- Mobile signing workflows
+- On-prem infrastructure
+
+---
+
+## 🔄 Integration Capabilities Overview
+
+| Feature | Appdome | Build38 (SEE) |
+|--------|---------|---------------|
+| **Integrate with CI/CD Pipeline?** | ✅ Yes | ✅ Yes |
+| **Source Code Access Required?** | ❌ No | ✅ Yes |
+| **On-Prem Platform Available?** | ✅ Yes (AAT) | ❌ No |
+| **SDK or Wrapper-Based?** | ❌ Wrapper-based (codeless fusion) | ✅ SDK-based |
+| **Integration Complexity** | Low – API-driven | Medium – requires SDK integration |
+| **Signing Process Support** | ✅ Yes (both local & remote) | ✅ Yes |
+| **Supports Air-Gapped Environments?** | ✅ Yes | ❌ No |
+
+---
+
+## 🔧 1. **Appdome: Integration into Mobile CI/CD Pipeline**
+
+### ✅ How It Works
+- Appdome uses a **no-code "fusion" model**: You upload the compiled APK/IPA to Appdome.
+- Security features are fused into the binary without needing source code.
+- The secured app is downloaded and signed.
+
+### 🛠️ Integration Steps
+1. **Compile the app** (debug or release build).
+2. **Upload to Appdome** via REST API or UI.
+3. Select and configure security features (e.g., SSO, certificate pinning, encryption).
+4. Download the secured app.
+5. **Sign and distribute** using your existing tools.
+
+### 📦 CI/CD Tools Supported
+- Jenkins
+- GitLab CI
+- Azure DevOps
+- Bitrise
+- Fastlane
+
+### 📁 On-Prem Support
+- Use **Air-Gapped Appdome (AAT)** if you’re in an air-gapped or on-prem environment.
+- AAT includes its own API endpoints for automation.
+
+### 🔒 Signing Workflow
+- Supports both **local signing** (you keep keys internal) and **remote signing** (with key vault integrations).
+
+### 👍 Pros
+- No need to modify source code
+- Easy to automate via REST API
+- Full control over signing process
+- Air-gapped/on-prem support available
+
+### 👎 Cons
+- Limited visibility into what's being fused
+- Less customizable than SDK-based solutions
+
+---
+
+## 🔧 2. **Build38 / SEE: Integration into Mobile CI/CD Pipeline**
+
+### ✅ How It Works
+- Build38 integrates as an **SDK** into your mobile app project.
+- You write logic that runs inside the **Secure Execution Environment (SEE)** container.
+- SEE handles sensitive operations like crypto, biometrics, token handling, etc.
+
+### 🛠️ Integration Steps
+1. Add the SEE SDK to your iOS (Swift/Objective-C) or Android (Java/Kotlin) project.
+2. Move sensitive logic into the SEE container.
+3. Build the app using your CI/CD system.
+4. Sign and distribute the app.
+
+### 📦 CI/CD Tools Supported
+- Jenkins
+- GitLab CI
+- Azure DevOps
+- Bitrise
+- Fastlane
+
+### 📁 On-Prem Support
+- The **tooling remains cloud-based**, but the output (the secured app) can run fully offline.
+- Does **not support air-gapped environments** for the SDK integration step.
+
+### 🔒 Signing Workflow
+- Standard mobile signing workflows apply; no special signing required by Build38.
+
+### 👍 Pros
+- Strong runtime protection and secure execution
+- Granular control over what runs securely
+- Great for apps with sensitive logic/data handling
+
+### 👎 Cons
+- Requires source code access and changes
+- SDK must be updated periodically
+- Tooling is SaaS-only (no on-prem version)
+
+---
+
+## 📋 Side-by-Side Comparison: Integration Into Mobile CI/CD
+
+| Feature | Appdome | Build38 (SEE) |
+|--------|---------|---------------|
+| **Requires Source Code?** | ❌ No | ✅ Yes |
+| **Code Changes Needed?** | ❌ No | ✅ Yes |
+| **CI/CD Integration** | ✅ REST API or CLI | ✅ Standard SDK build |
+| **On-Prem Tooling Available?** | ✅ Yes (AAT) | ❌ No |
+| **Air-Gapped Support** | ✅ Yes | ❌ No |
+| **Signing Flexibility** | ✅ High | ✅ Standard |
+| **Runtime Protection Level** | Moderate to High | Very High |
+| **Customization of Security Logic** | Limited | High |
+| **Third-Party SDK Sandboxing** | ❌ No | ✅ Yes |
+
+---
+
+## 🧠 Final Recommendation Based on Your Needs
+
+| If You Need… | Choose This |
+|--------------|-------------|
+| To **secure apps without touching source code** | ✅ Appdome |
+| To **protect sensitive logic and data at runtime** | ✅ Build38 (SEE) |
+| An **air-gapped or on-prem toolchain** | ✅ Appdome |
+| Full **integration with current source code pipelines** | ✅ Build38 |
+| **No-code or low-code security integration** | ✅ Appdome |
+| **Strong anti-tamper and secure execution** | ✅ Build38 |
+
+---
+
+If you'd like help choosing based on your specific **development stack**, **team size**, or **security requirements**, feel free to share more details!
