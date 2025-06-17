@@ -807,3 +807,19 @@ Device‑binding	✓ device‑tied certs & keys	Partial integrity check	Partial 
 Session Encryption	✓ via TLS stack	✓ cipher/session enforcement	via white‑box, unspecified
 Fraud Engine Integration	Telemetry-centric alerts	✓ anti‑fraud CI/CD plugin	SIEM/SOAR threat handling
 Dynamic Policy Updates	Active hardening updates	Build-time only	✓ dynamic server policies
+
+
+
+
+| Feature                    | Build38                    | Appdome                      | Digital.ai                   |
+| -------------------------- | -------------------------- | ---------------------------- | ---------------------------- |
+| Obfuscation                | ✓ via o‑mvll + white‑box   | ✓ built-in (ONEShield)       | ✓ OWASP MASVS, Quick Protect |
+| Anti‑Tamper                | ✓ runtime + kill-switch    | ✓ ONEShield RASP             | ✓ MASVS-aligned              |
+| Anti‑Debug                 | ✓ by RASP/active hardening | ✓ dedicated plugin           | ✓ anti-analysis toolsets     |
+| Jailbreak detection        | ✓ continuous runtime guard | ✓ ONEShield                  | ✓ environment detection      |
+| Cert Pinning & Secure Comm | ✓ dynamic, TLS stack       | ✓ dynamic + signature, roles | ✓ TLS + white‑box crypto     |
+| MITM Detection             | ✓ active defense           | ✓ bypass/plugin detection    | Partial (RASP/TLS)           |
+| Device‑binding             | ✓ device‑tied certs & keys | Partial integrity check      | Partial via env checks       |
+| Session Encryption         | ✓ via TLS stack            | ✓ cipher/session enforcement | via white‑box, unspecified   |
+| Fraud Engine Integration   | Telemetry-centric alerts   | ✓ anti‑fraud CI/CD plugin    | SIEM/SOAR threat handling    |
+| Dynamic Policy Updates     | Active hardening updates   | Build-time only              | ✓ dynamic server policies    |
