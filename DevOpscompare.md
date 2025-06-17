@@ -14,3 +14,17 @@
 | **Platform Coverage**                          | Android, iOS, HarmonyOS                 | Android, iOS, React Native, Flutter                   | Android, iOS, Windows, Linux, IoT                       |
 | **Ease of Use**                                | Moderate (code integration + config)    | Easy (fully automated)                                | Moderate to complex (enterprise-grade)                  |
 | **Use Case Fit**                               | Best for DevSecOps who want SDK control | Best for teams wanting speed + no-code implementation | Best for high-assurance enterprise/government scenarios |
+
+
+
+| Feature / Product              | **Build38**                               | **Appdome**                                | **Digital.ai**                           |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------ | ---------------------------------------- |
+| **SIEM Integration Supported** | ✅ Yes                                     | ⚠️ Limited direct support                  | ✅ Yes                                    |
+| **Integration Method**         | ✅ Webhook, Syslog, REST API               | ⚠️ Needs custom logic via Appdome DEV-API  | ⚠️ REST API (requires polling)           |
+| **Real-time Event Push**       | ✅ Yes (Webhooks/Syslog)                   | ❌ No native real-time push                 | ❌ No (must poll API or build connector)  |
+| **Event Types Available**      | ✅ Runtime threats, device risk, telemetry | ⚠️ Depends on SDKs added & Fusion settings | ✅ Runtime protection (RASP, tampering)   |
+| **Telemetry Detail Level**     | 🟢 High (XDR-style behavioral + security) | ⚠️ Varies by SDK used                      | 🟡 Moderate (focus on tamper/debug info) |
+| **Built-in SIEM Connectors**   | ✅ Yes (SIEM-focused event stream formats) | ❌ No (DIY required via Appdome DEV-API)    | ❌ No (manual pipeline setup needed)      |
+| **Ease of Integration**        | 🟢 Easy                                   | 🟡 Medium–Hard                             | 🟡 Medium (but requires polling)         |
+| **Data Format**                | JSON, CEF, Syslog-ready                   | Custom SDK output (must be routed)         | JSON from API                            |
+| **Developer Effort Needed**    | 🟢 Low (prebuilt options)                 | 🔴 High (manual routing + orchestration)   | 🟡 Moderate (middleware needed)          |
