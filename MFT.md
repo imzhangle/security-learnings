@@ -230,3 +230,105 @@ I can generate a visual architecture diagram now — would you like it:
 * Or stylized for presentation?
 
 Let me know your preferred style or format (PNG, SVG, PDF).
+
+
+
+
+
+You're absolutely right — and great catch.
+
+In the original diagram I described, the **sanitization step was implied**, but **not clearly shown as an explicit component**. Let me fix that for you with a clean, security-aware architecture that **explicitly shows where and how sanitization happens** in a Prod-to-Dev file transfer pipeline using Kiteworks.
+
+---
+
+## ✅ Updated Secure MFT Architecture with Explicit Sanitization
+
+### 🔄 Data Flow with Sanitization Step:
+
+```
+    ┌──────────────────────┐
+    │     PROD SYSTEMS     │
+    └────────┬─────────────┘
+             │
+             ▼
+    ┌──────────────────────┐
+    │ Prod Export Job or   │
+    │ App Dump Generator   │
+    └────────┬─────────────┘
+             │
+             ▼
+    ┌──────────────────────┐
+    │  SANITIZATION SCRIPT │   ←── (Bash, Python, ETL, or DLP Preprocessor)
+    │  (Redacts PII/PHI)   │
+    └────────┬─────────────┘
+             │
+             ▼
+    ┌────────────────────────────┐
+    │  PROD KITEWORKS EXPORT DIR │
+    │   (e.g. /export/dev)       │
+    └────────┬───────────────────┘
+             │ (SFTP/SCP)
+             ▼
+    ┌──────────────────────┐
+    │  INTERMEDIARY HOST   │   ← Secure VM in Transfer Zone
+    └────────┬─────────────┘
+             │
+             ▼
+    ┌────────────────────────────┐
+    │  DEV KITEWORKS IMPORT DIR  │
+    │   (e.g. /import/prod-data) │
+    └────────────────────────────┘
+```
+
+---
+
+## 🛡️ Where Sanitization Happens
+
+### ✅ **Before** the file reaches Kiteworks:
+
+* **This is the ideal and recommended place.**
+* Ensures **sensitive data never leaves Prod in raw form.**
+* You have **full control** (e.g., masking emails, redacting PII, filtering logs).
+
+---
+
+## 💡 Why Not Inside Kiteworks?
+
+* Kiteworks is designed as a **secure file transfer and compliance platform**, not a content transformation system.
+* Sanitizing inside Kiteworks would mean **the sensitive data already left Prod** — violating most compliance standards (e.g., GDPR, HIPAA, ISO 27001 segregation of environments).
+
+---
+
+## 🔧 Example Sanitization Point
+
+If your team exports CSV, JSON, logs, or XML, you can add this job in the export process:
+
+```bash
+# sanitize.sh
+sed -E 's/[0-9]{3}-[0-9]{2}-[0-9]{4}/[REDACTED_SSN]/g' "$1" \
+  | sed -E 's/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+/\[REDACTED_EMAIL]/g' \
+  > /kiteworks/export/dev/$(basename "$1")
+```
+
+Then schedule:
+
+```bash
+crontab -e
+*/15 * * * * /opt/scripts/sanitize.sh /prod/data/dump.csv
+```
+
+---
+
+## ✅ Summary: Fix in the Diagram
+
+| Layer                     | Sanitization?                   | Notes |
+| ------------------------- | ------------------------------- | ----- |
+| App → File Export         | ❌ Raw                           |       |
+| **Sanitizer**             | ✅ Yes — must be explicit        |       |
+| Kiteworks Prod Export Dir | ✅ Only sanitized files          |       |
+| Intermediary VM           | ✅ Trusted channel only          |       |
+| Dev Kiteworks             | ✅ No raw sensitive data arrives |       |
+
+---
+
+Would you like me to generate a **diagram image** of this architecture showing all key steps?
