@@ -107,3 +107,126 @@ Policy:
 | Automation     | Scheduled or triggered jobs, not manual movement |
 
 Would you like help drafting a sample architecture diagram or shell script to automate this process?
+
+
+
+Great — here’s a full solution including a **diagram description**, a **script example**, and a **high-level architecture** you can present or implement.
+
+---
+
+## 🧱 1. **Architecture Diagram Description**
+
+We’ll walk through this verbally first — you can visualize or draw this later (or I can generate a diagram for you too).
+
+### **ENVIRONMENTS**
+
+```
+        ┌─────────────┐                ┌────────────┐
+        │   PROD MFT  │                │   DEV MFT  │
+        │ (Kiteworks) │                │ (Kiteworks)│
+        └─────┬───────┘                └─────┬──────┘
+              │                                  │
+        ┌─────▼─────┐                     ┌──────▼──────┐
+        │ Export Dir│                     │  Import Dir │
+        │ /export/dev│<────────┐   ┌──────│/import/prod │
+        └────────────┘         │   │      └─────────────┘
+                               ▼   ▼
+                       ┌─────────────────┐
+                       │ Intermediary VM │
+                       │ (Secure Gateway)│
+                       └─────────────────┘
+```
+
+**Roles:**
+
+* **Prod MFT:** Hosts an export directory. Only app or automation writes here.
+* **Intermediary VM:** Pulls from Prod, pushes to Dev. No users log in. Keys only.
+* **Dev MFT:** Only receives — cannot push to Prod. Read-only access by dev team.
+
+---
+
+## ⚙️ 2. **Script for Intermediary File Transfer**
+
+Assuming:
+
+* You use `scp` or `sftp` with SSH keys.
+* The intermediary has keys to access both environments.
+* You’re transferring files with integrity checks.
+
+```bash
+#!/bin/bash
+
+# CONFIG
+PROD_HOST="prod-kiteworks.example.com"
+DEV_HOST="dev-kiteworks.example.com"
+PROD_USER="svc_transfer"
+DEV_USER="svc_transfer"
+EXPORT_DIR="/export/dev-dumps/"
+IMPORT_DIR="/import/prod-files/"
+TMP_DIR="/tmp/kiteworks-transfer"
+SSH_KEY="/opt/keys/kiteworks_transfer.key"
+
+# STEP 1: Create working dir
+mkdir -p "$TMP_DIR"
+cd "$TMP_DIR" || exit 1
+
+# STEP 2: Pull files from PROD
+scp -i "$SSH_KEY" "${PROD_USER}@${PROD_HOST}:${EXPORT_DIR}*" .
+
+# STEP 3: Verify integrity (basic check — improve with hash if needed)
+for file in *; do
+  if [[ -f "$file" ]]; then
+    echo "Transferring: $file"
+    
+    # STEP 4: Push to DEV
+    scp -i "$SSH_KEY" "$file" "${DEV_USER}@${DEV_HOST}:${IMPORT_DIR}"
+    
+    if [[ $? -eq 0 ]]; then
+      echo "Success: $file"
+    else
+      echo "FAILED: $file"
+    fi
+  fi
+done
+
+# STEP 5: Clean up
+rm -rf "$TMP_DIR"
+```
+
+You can make this script run on a **cron schedule** or triggered by an API/event.
+
+---
+
+## 🔐 3. **Security Controls to Enforce**
+
+| Area           | Control                                    |
+| -------------- | ------------------------------------------ |
+| Authentication | Use SSH keys (rotate every 90 days)        |
+| Transfer Host  | Hardened Linux VM with no user login       |
+| Logs           | Send to centralized SIEM (Splunk, etc.)    |
+| File Retention | Auto-delete after X days                   |
+| Permissions    | RO on source, RW on dest, no bidirectional |
+| Sanitization   | Use a pre-transfer job in Prod if needed   |
+
+---
+
+## 📄 4. Optional Audit Logging Script
+
+Add this to the script to log each event to a file or syslog:
+
+```bash
+LOG_FILE="/var/log/kiteworks-transfer.log"
+echo "$(date): Transferred $file from $PROD_HOST to $DEV_HOST" >> "$LOG_FILE"
+```
+
+---
+
+## 🧩 Want a Diagram?
+
+I can generate a visual architecture diagram now — would you like it:
+
+* Simple (overview)
+* Detailed (with ports, protocols, IP zones)
+* Or stylized for presentation?
+
+Let me know your preferred style or format (PNG, SVG, PDF).
