@@ -123,3 +123,123 @@ Choose **JWT** if you want simplicity and already have a token system.
 Choose **OAuth2** if you need full control over token lifecycle and integration with secure identity providers.
 
 Let me know if you want a sample configuration or flow for either plan!
+
+
+
+
+
+Here's a **diagram description** of the **OAuth 2.0 User Authorization Workflow with Scopes**, followed by a **text-based flow**. Since I can't draw actual images, I'll provide a **detailed ASCII-style diagram** and a **step-by-step explanation**.
+
+---
+
+## 🔐 OAuth 2.0 User Authorization Workflow (with Scopes)
+
+This example assumes the **Authorization Code Grant** flow, the most common and secure OAuth 2.0 flow used for web apps.
+
+---
+
+### 🧩 Components Involved:
+
+- **Resource Owner** (User)
+- **Client** (Your Application)
+- **Authorization Server** (e.g., Google, GitHub, etc.)
+- **Resource Server** (API that hosts protected resources)
+
+---
+
+## 📋 Diagram (Text-based)
+
+```
++-------------------+       +---------------------+       +------------------------+
+|                   |       |                     |       |                        |
+|   Resource Owner  |       |     Client App      |       | Authorization Server   |
+|    (User)         |       |                     |       | & Resource Server      |
+|                   |       |                     |       |                        |
++-------------------+       +----------+----------+       +------------------------+
+                                        |                                                  
+                                        | 1. User initiates login / requests access        
+                                        |    with specific scopes (permissions)            
+                                        |                                                  
+                                        | 2. Redirect to Auth Server with:                 
+                                        |    - client_id                                   
+                                        |    - redirect_uri                                
+                                        |    - scope (e.g., email, profile, read:data)   
+                                        |    - response_type=code                         
+                                        |------------------------------------------------>|
+                                        |                                                  
+                                        | 3. Auth Server prompts user to login & grant    
+                                        |    permissions based on requested scopes        
+                                        |                                                  
+                                        |<------------------------------------------------|
+                                        |                                                  
+                                        | 4. Auth Server redirects back with `code`       
+                                        |    and same scopes requested                    
+                                        |------------------------------------------------>|
+                                        |                                                  
+                   |<------------------| 5. Client exchanges `code` for `access_token`     
+                   |                   |    + optional `refresh_token`                    
+                   |                   |    - client_id & secret                           
+                   |                   |    - code                                       
+                   |                   |    - redirect_uri                                 
+                   |                   |    - grant_type=authorization_code                
+                   |                   |------------------------------------------------>|
+                   |                   |                                                  
+                   |                   | 6. Auth Server validates and returns tokens      
+                   |<------------------------------------------------                      
+                   |                                                  
+                   | 7. Client uses `access_token` to call Resource Server APIs
+                   |    - Scopes are validated before granting access
+                   |------------------------------------------------>|
+                   |                                                  
+                   |<------------------------------------------------|
+                   | 8. Resource Server returns data if token is valid
+                   |    and has required scope                     
+                   |                                                  
+```
+
+---
+
+## 🧾 Step-by-Step Explanation with Scopes
+
+1. **User initiates action** (e.g., "Login with Google" or "Connect your account").
+2. **Client app redirects** the user to the **Authorization Server**, including:
+   - `client_id`
+   - `redirect_uri`
+   - `response_type=code`
+   - `scope=email profile read:data write:data` (scopes requested)
+3. **Authorization Server** prompts the user to:
+   - Log in (if not already)
+   - Approve/deny the requested scopes
+4. If user approves, **Authorization Server redirects back** to the client app with an **authorization code**.
+5. **Client app** exchanges the authorization code for an **access token** by making a **server-to-server request** to the Authorization Server.
+6. The **Authorization Server** returns:
+   - `access_token`
+   - Optionally, a `refresh_token`
+   - The actual scopes granted (might be fewer than requested)
+7. **Client app** uses the `access_token` to make requests to the **Resource Server** (e.g., API).
+8. **Resource Server** validates the token and checks if the token includes the **required scopes** to access the resource.
+
+---
+
+## 📌 Example Scope Request
+
+```
+https://auth.example.com/authorize?
+  response_type=code&
+  client_id=your_client_id&
+  redirect_uri=https://yourapp.com/callback&
+  scope=email profile read:data write:data
+```
+
+---
+
+## 🛡️ Key Points About Scopes
+
+- Scopes define the **level of access** the client is requesting.
+- Users can **approve or deny** individual scopes.
+- The token returned will include only the **scopes the user approved**.
+- The Resource Server checks the scopes in the token before allowing access to protected endpoints.
+
+---
+
+Would you like me to generate a **Mermaid diagram** version of this or a **sequence diagram** for documentation?
