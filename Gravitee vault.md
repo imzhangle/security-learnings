@@ -611,3 +611,432 @@ subjects:
 - ✅ **Scalability**: Works across multiple environments
 
 This Vault-integrated approach provides enterprise-grade security while maintaining operational simplicity and automation capabilities.
+
+
+
+
+Yes, using the **OpenShift Vault Operator** significantly changes the architecture and simplifies the integration. Here's how it impacts your setup:
+
+## Key Differences with OpenShift Vault Operator
+
+### 1. **Simplified Authentication**
+```yaml
+# No need for manual Vault policy/role setup
+# Vault Operator handles Kubernetes auth automatically
+
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: gravitee-jwt-certificates
+spec:
+  vaultSecretDefinition:
+    path: "pki/issue/jwt-signing"
+    payload:
+      common_name: "jwt.gravitee.local"
+      ttl: "8760h"
+  destination:
+    name: gravitee-jwt-cert
+    type: Opaque
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: gravitee-tls-certificates
+spec:
+  vaultSecretDefinition:
+    path: "pki/issue/https-server"
+    payload:
+      common_name: "gravitee-am.local"
+      ttl: "8760h"
+  destination:
+    name: gravitee-tls-cert
+    type: kubernetes.io/tls
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: gravitee-passwords
+spec:
+  vaultSecretDefinition:
+    path: "kv/data/gravitee/all"
+  destination:
+    name: gravitee-passwords
+    type: Opaque
+```
+
+### 2. **Enhanced Deployment with Operator Integration**
+```yaml
+# gravitee-am-vault-operator-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gravitee-am-management-api
+  labels:
+    app: gravitee-am
+    component: management-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gravitee-am
+      component: management-api
+  template:
+    metadata:
+      labels:
+        app: gravitee-am
+        component: management-api
+      # Vault Operator annotations (simpler than HashiCorp's)
+      annotations:
+        vault.security.banzaicloud.io/vault-addr: "https://vault:8200"
+        vault.security.banzaicloud.io/vault-role: "gravitee-role"
+        vault.security.banzaicloud.io/vault-skip-verify: "false"
+        vault.security.banzaicloud.io/vault-tls-secret: "vault-tls"
+    spec:
+      serviceAccountName: gravitee-vault-sa  # Vault Operator manages this
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      
+      containers:
+      - name: gravitee-am-management-api
+        image: graviteeio/am-management-api:3.20
+        ports:
+        - containerPort: 8092
+          name: http
+        - containerPort: 8443
+          name: https
+        
+        # Vault Operator injects secrets as environment variables
+        env:
+        - name: TLS_CERT
+          valueFrom:
+            secretKeyRef:
+              name: gravitee-tls-cert
+              key: tls.crt
+        - name: TLS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gravitee-tls-cert
+              key: tls.key
+        - name: JWT_KEYSTORE
+          valueFrom:
+            secretKeyRef:
+              name: gravitee-jwt-cert
+              key: keystore
+        
+        # Passwords from Vault Operator managed secrets
+        envFrom:
+        - secretRef:
+            name: gravitee-passwords
+        
+        volumeMounts:
+        - name: certificates
+          mountPath: /opt/gravitee/certificates
+          readOnly: true
+        - name: config-volume
+          mountPath: /opt/gravitee/config
+        - name: logs-volume
+          mountPath: /opt/gravitee/logs
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        
+        livenessProbe:
+          httpGet:
+            path: /management/health
+            port: 8092
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        
+        readinessProbe:
+          httpGet:
+            path: /management/health
+            port: 8092
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      
+      volumes:
+      - name: certificates
+        projected:
+          sources:
+          - secret:
+              name: gravitee-tls-cert
+          - secret:
+              name: gravitee-jwt-cert
+      - name: config-volume
+        configMap:
+          name: gravitee-config
+      - name: logs-volume
+        emptyDir: {}
+```
+
+### 3. **Vault Operator Configuration**
+```yaml
+# vault-connection.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultConnection
+metadata:
+  name: vault-connection
+spec:
+  caBundle: ""
+  skipTLSVerify: false
+  address: "https://vault.vault.svc:8200"
+  tlsServerName: "vault.vault.svc"
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultAuth
+metadata:
+  name: gravitee-auth
+spec:
+  vaultConnection: vault-connection
+  kubernetes:
+    role: gravitee-role
+    serviceAccount: gravitee-vault-sa
+    audiences:
+    - vault
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultPolicy
+metadata:
+  name: gravitee-policy
+spec:
+  vaultAuth: gravitee-auth
+  policy: |
+    path "pki/issue/jwt-signing" {
+      capabilities = ["create", "update"]
+    }
+    path "pki/issue/https-server" {
+      capabilities = ["create", "update"]
+    }
+    path "kv/data/gravitee/*" {
+      capabilities = ["read"]
+    }
+```
+
+### 4. **Certificate Auto-Rotation with Vault Operator**
+```yaml
+# certificate-rotation-with-operator.yaml
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: gravitee-jwt-cert-auto
+  annotations:
+    # Auto-refresh every 24 hours
+    vault.redhatcop.io/refresh-period: "24h"
+spec:
+  vaultAuth: gravitee-auth
+  vaultSecretDefinition:
+    path: "pki/issue/jwt-signing"
+    payload:
+      common_name: "jwt.gravitee.local"
+      ttl: "8760h"  # 1 year
+  destination:
+    name: gravitee-jwt-cert
+    type: Opaque
+    labels:
+      app: gravitee-am
+      refresh: "auto"
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: VaultSecret
+metadata:
+  name: gravitee-tls-cert-auto
+  annotations:
+    # Auto-refresh every 24 hours
+    vault.redhatcop.io/refresh-period: "24h"
+spec:
+  vaultAuth: gravitee-auth
+  vaultSecretDefinition:
+    path: "pki/issue/https-server"
+    payload:
+      common_name: "gravitee-am.local"
+      ttl: "8760h"
+  destination:
+    name: gravitee-tls-cert
+    type: kubernetes.io/tls
+```
+
+### 5. **Enhanced Monitoring with Operator**
+```yaml
+# monitoring-with-operator.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gravitee-vault-monitor
+  labels:
+    app: gravitee-am
+spec:
+  selector:
+    matchLabels:
+      app: gravitee-am
+  endpoints:
+  - port: http
+    path: /management/health
+    interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gravitee-vault-rules
+spec:
+  groups:
+  - name: gravitee.vault.operator
+    rules:
+    - alert: VaultSecretRefreshFailed
+      expr: vault_secret_refresh_failures_total > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Vault secret refresh failed for Gravitee"
+        description: "Vault Operator failed to refresh secrets for Gravitee deployment"
+    
+    - alert: VaultConnectionDown
+      expr: vault_connection_status == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Vault connection is down"
+        description: "Gravitee deployment cannot connect to Vault"
+```
+
+### 6. **CI/CD Integration with Vault Operator**
+```yaml
+# .gitlab-ci.yml - Vault Operator version
+stages:
+  - validate
+  - deploy
+  - verify
+  - monitor
+
+variables:
+  OPENSHIFT_PROJECT: $CI_PROJECT_NAMESPACE
+
+validate_vault:
+  stage: validate
+  script:
+    - oc project $OPENSHIFT_PROJECT
+    - |
+      echo "Validating Vault Operator resources..."
+      oc get vaultconnection
+      oc get vaultauth
+      oc get vaultpolicy
+      oc get vaultsecret
+  only:
+    - merge_requests
+    - master
+
+deploy_with_operator:
+  stage: deploy
+  script:
+    - oc project $OPENSHIFT_PROJECT
+    - |
+      echo "Deploying Vault Operator resources..."
+      oc apply -f vault-connection.yaml
+      oc apply -f vault-auth.yaml
+      oc apply -f vault-policy.yaml
+      oc apply -f vault-secrets.yaml  # This creates the actual secrets
+    - |
+      echo "Deploying Gravitee AM..."
+      oc apply -f gravitee-deployment.yaml
+    - oc rollout status deployment/gravitee-am-management-api
+  only:
+    - master
+
+verify_secrets:
+  stage: verify
+  script:
+    - oc project $OPENSHIFT_PROJECT
+    - |
+      echo "Verifying secrets are created by Vault Operator..."
+      oc get secret gravitee-jwt-cert
+      oc get secret gravitee-tls-cert
+      oc get secret gravitee-passwords
+    - |
+      echo "Checking Vault Secret status..."
+      oc get vaultsecret gravitee-jwt-cert-auto -o jsonpath='{.status}'
+  only:
+    - master
+
+monitor_rotation:
+  stage: monitor
+  script:
+    - oc project $OPENSHIFT_PROJECT
+    - |
+      echo "Monitoring certificate rotation..."
+      # Check if VaultSecret is refreshing properly
+      LAST_REFRESH=$(oc get vaultsecret gravitee-jwt-cert-auto -o jsonpath='{.status.lastVaultSecretUpdate}')
+      echo "Last refresh: $LAST_REFRESH"
+  only:
+    - schedules
+```
+
+### 7. **Vault Operator Service Account**
+```yaml
+# vault-operator-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gravitee-vault-sa
+  labels:
+    app: gravitee-am
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gravitee-vault-role
+  labels:
+    app: gravitee-am
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["redhatcop.redhat.io"]
+  resources: ["vaultsecrets", "vaultsecrets/status"]
+  verbs: ["get", "list", "watch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gravitee-vault-rolebinding
+  labels:
+    app: gravitee-am
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gravitee-vault-role
+subjects:
+- kind: ServiceAccount
+  name: gravitee-vault-sa
+```
+
+## Key Benefits of OpenShift Vault Operator:
+
+### **Simplified Management:**
+- ✅ **CRD-Based**: Manage Vault resources as Kubernetes custom resources
+- ✅ **Automatic Auth**: No manual Vault policy/role setup needed
+- ✅ **Self-Service**: Developers can manage their own Vault integrations
+
+### **Enhanced Automation:**
+- ✅ **Auto-Rotation**: Built-in secret refresh capabilities
+- ✅ **Reconciliation**: Automatic recovery from failures
+- ✅ **Status Monitoring**: Built-in status reporting
+
+### **Better Integration:**
+- ✅ **Native OpenShift**: Tight integration with OpenShift features
+- ✅ **Operator Pattern**: Follows Kubernetes operator best practices
+- ✅ **Monitoring**: Built-in Prometheus metrics and alerts
+
+### **Improved Security:**
+- ✅ **Least Privilege**: Automatic minimal permission assignment
+- ✅ **Audit Trail**: Comprehensive logging and monitoring
+- ✅ **Compliance**: Meets enterprise security requirements
+
+The OpenShift Vault Operator provides a much more streamlined and automated approach compared to manual Vault integration, making it easier to manage secrets and certificates in your Gravitee deployment.
