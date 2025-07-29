@@ -1040,3 +1040,137 @@ subjects:
 - ✅ **Compliance**: Meets enterprise security requirements
 
 The OpenShift Vault Operator provides a much more streamlined and automated approach compared to manual Vault integration, making it easier to manage secrets and certificates in your Gravitee deployment.
+
+
+Ah — now you're talking about a **cleaner, more secure approach**: using Vault’s `kubernetes` login method inside the OpenShift pod to get a **short-lived Vault child token**, based on the pod’s own **service account JWT**, and **not hardcoding any Vault token**.
+
+Let’s break it down **step by step** and then show how this **“JWT-internal to child token”** flow works.
+
+---
+
+## ✅ Objective
+
+> From an OpenShift pod, use its **own service account JWT** to authenticate with **Vault**, and receive a **child Vault token** (scoped by policy), which can then be used to access secrets.
+
+This method is:
+
+* **Secure** (uses OpenShift’s built-in token rotation + Vault's short-lived tokens)
+* **Least-privilege** (uses Vault roles and policies)
+* **Dynamic** (no long-lived tokens stored in your workloads)
+
+---
+
+## 🔄 High-Level Flow
+
+```
+[OpenShift Pod]
+    |
+    | (1) Reads SA JWT
+    V
+[Vault: /auth/kubernetes/login]
+    |
+    | (2) Validates JWT with OpenShift API via TokenReview
+    V
+[Vault Issues Short-Lived Child Token]
+    |
+    | (3) Pod uses this token to access secrets
+```
+
+---
+
+## 🔧 Vault Configuration Recap (done by admin, outside the pod)
+
+> This must be in place for the pod to authenticate.
+
+### 1. Enable Kubernetes auth method:
+
+```bash
+vault auth enable kubernetes
+```
+
+---
+
+### 2. Configure Vault to talk to OpenShift:
+
+```bash
+vault write auth/kubernetes/config \
+  kubernetes_host="https://<openshift-api>:6443" \
+  token_reviewer_jwt=@/tmp/vault-reviewer-token.jwt \
+  kubernetes_ca_cert=@/tmp/openshift-ca.crt \
+  disable_iss_validation=true
+```
+
+---
+
+### 3. Create a Vault role that binds an OpenShift service account:
+
+```bash
+vault write auth/kubernetes/role/my-app-role \
+  bound_service_account_names="my-app-sa" \
+  bound_service_account_namespaces="my-namespace" \
+  policies="read-secrets" \
+  ttl="15m"
+```
+
+---
+
+## 🚀 What Happens *Inside the Pod* (JWT → Vault Token)
+
+### Step-by-Step in Shell:
+
+```bash
+# 1. Get the service account JWT
+JWT=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+# 2. Send it to Vault to log in
+VAULT_TOKEN=$(curl -s --request POST \
+  --data '{"role":"my-app-role", "jwt":"'"$JWT"'"}' \
+  https://vault.mycompany.local/v1/auth/kubernetes/login \
+  | jq -r '.auth.client_token')
+
+# 3. Use the returned Vault token to access secrets
+curl -s -H "X-Vault-Token: $VAULT_TOKEN" \
+  https://vault.mycompany.local/v1/secret/data/myapp/config
+```
+
+---
+
+## 📦 What You Get:
+
+* A **child Vault token** that:
+
+  * Is short-lived (based on TTL)
+  * Is limited by a Vault policy (e.g., read-only)
+  * Is revocable (e.g., when pod terminates or token is rotated)
+
+---
+
+## 🔒 Why It’s Secure
+
+* The pod uses a **Kubernetes-managed token** (automatically rotated)
+* Vault validates that token with OpenShift — it’s not trusting blindly
+* The resulting Vault token is short-lived and restricted
+* **No secrets** are hardcoded in the pod spec or container image
+
+---
+
+## 🧠 Extra: Use Vault Agent (optional)
+
+To avoid writing curl code in your app, you can run **Vault Agent** as a sidecar:
+
+* Agent performs the JWT login to Vault
+* Gets a Vault token
+* Caches and renews it automatically
+* Fetches secrets and writes them to a shared volume
+
+---
+
+## 🧪 Want a Real-World YAML Example?
+
+I can give you:
+
+* A Vault role
+* A pod spec
+* A working curl+JWT login inside the pod
+
+Just say the word.
