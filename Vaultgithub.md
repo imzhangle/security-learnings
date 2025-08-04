@@ -203,3 +203,46 @@ And use dynamically (requires scripting):
 ---
 
 Let me know if you want a full example using `curl` + dynamic role selection based on `github.environment`!
+
+
+# .github/workflows/test-vault-list.yml
+
+name: Test Vault - List Secrets
+
+on:
+  workflow_dispatch:  # Allow manual run
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-vault:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Vault and List Secrets
+        uses: hashicorp/vault-action@v3
+        with:
+          url: https://your-vault-address.com
+          caCertificate: ${{ secrets.VAULT_CA_CERT }} # Optional: for self-signed certs
+          method: jwt
+          jwtGithubWorkflow: true
+          role: github-actions-test
+          # We won't read secrets, just list
+          # But action requires at least one 'secrets' line to trigger auth
+          secrets: |
+            secret/data/test/placeholder placeholder # dummy to trigger login
+
+      - name: List secrets in 'test/' folder
+        run: |
+          # Use VAULT_TOKEN from vault-action
+          export VAULT_TOKEN=${{ env.VAULT_TOKEN }}
+
+          # List secrets under secret/test/
+          vault list secret/metadata/test/
