@@ -133,3 +133,19 @@ This hash is the `kid`.
 ---
 
 Let me know if you're using a **GitHub App**, and I can help you generate and decode the JWT properly!
+
+
+
+
+- name: 🔍 Check if token is set and not empty
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Or your custom secret
+  run: |
+    if [ -z "$GITHUB_TOKEN" ]; then
+      echo "❌ ERROR: GITHUB_TOKEN is empty or not set!"
+      exit 1
+    else
+      echo "✅ GITHUB_TOKEN is set (value is hidden for security)"
+      # Optional: show length of token (safe, doesn't reveal value)
+      echo "Token length: ${#GITHUB_TOKEN} characters"
+    fi
