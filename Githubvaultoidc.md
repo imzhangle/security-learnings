@@ -370,3 +370,53 @@ Let me know if you want to:
 - Handle errors or debug login failures.
 
 You're all set for secure, secretless Vault access! 🔐🚀
+
+
+
+If you want to debug why Vault isn’t returning a token, the first step is to **print the full HTTP response from Vault** instead of just extracting `.auth.client_token`.
+
+Here’s how you can modify your step to show everything Vault sends back:
+
+```yaml
+- name: Exchange OIDC token for Vault token (debug)
+  run: |
+    echo "Requesting Vault token..."
+    RESPONSE=$(curl -s --request POST \
+      --header "Content-Type: application/json" \
+      --data "{\"jwt\": \"${{ steps.oidc.outputs.token }}\", \"role\": \"my-github-role\"}" \
+      https://vault.example.com/v1/auth/jwt/login)
+
+    echo "🔹 Full Vault response:"
+    echo "$RESPONSE" | jq .
+
+    VAULT_TOKEN=$(echo "$RESPONSE" | jq -r '.auth.client_token')
+    echo "🔹 Extracted Vault token: ${VAULT_TOKEN:-<null>}"
+```
+
+---
+
+### Why this helps
+
+When Vault rejects the request, it won’t have an `.auth.client_token`.
+Instead, the JSON will have an `errors` array, e.g.:
+
+```json
+{
+  "errors": [
+    "jwt: token is expired",
+    "or: claim sub does not match bound_subject"
+  ]
+}
+```
+
+Seeing those errors will tell you exactly **why** the login failed — usually it’s:
+
+* `aud` claim mismatch with `bound_audiences`
+* `sub` claim mismatch with `bound_subject`
+* Role name not found
+* Token expired
+
+---
+
+Do you want me to **merge this full Vault response dump** with the OIDC token inspection workflow I gave earlier, so you get both the token’s claims and Vault’s rejection reason in a single run? That’s the quickest way to troubleshoot end-to-end.
+
