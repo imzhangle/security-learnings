@@ -127,3 +127,136 @@ LIMIT 20;
 ---
 
 Would you like me to show a **full SQL query** that lists all user-triggered job runs (including project, job name, user, and start time)? That’s a common one for reporting or dashboards.
+
+
+
+Perfect — let’s get precise.
+In **Rundeck’s database**, job *logs* (the execution output: stdout/stderr from your job steps) can be stored in several different ways depending on your **log storage configuration**.
+
+Here’s the full breakdown 👇
+
+---
+
+## 🧩 Where Job Logs Are Stored in Rundeck DB
+
+### 🧱 Key Tables (if DB log storage is enabled)
+
+| Table                             | Purpose                                                           | Notes                                           |
+| --------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------- |
+| **`execution`**                   | Metadata for each run (start time, user, status, etc.)            | Links to logs via `id` → `execution_id`         |
+| **`rdlog`**                       | Stores raw job output lines (log text)                            | Each execution has one or more log entries here |
+| **`execution_log_state`**         | Tracks log storage completion, upload status, and retrieval state | Used by the log storage subsystem               |
+| **`base_report` / `exec_report`** | Summary of job outcomes                                           | For reporting; not raw logs                     |
+
+> ⚠️ Note: Depending on Rundeck version (especially after 3.x), `rdlog` might be replaced or supplemented by `execution_output` or external storage references.
+
+---
+
+## 🗄️ Common Configurations
+
+### 1. **Database Log Storage (less common, small setups)**
+
+If you see this in `rundeck-config.properties`:
+
+```properties
+rundeck.execution.logs.fileStoragePlugin=db
+```
+
+→ Logs are stored **directly in the database**, in the `rdlog` table.
+
+Example query:
+
+```sql
+SELECT e.id AS execution_id,
+       e.job_id,
+       e.user,
+       e.status,
+       l.log,
+       l.completed
+FROM execution e
+JOIN rdlog l ON e.id = l.execution_id
+WHERE e.id = 1234;
+```
+
+Here:
+
+* `rdlog.log` → contains the job’s console output (text)
+* `completed` → true when Rundeck finished storing the log
+
+---
+
+### 2. **Filesystem Log Storage (default in most setups)**
+
+If you see:
+
+```properties
+rundeck.execution.logs.fileStoragePlugin=filesystem
+rundeck.execution.logs.fileStorageDir=/var/lib/rundeck/logs
+```
+
+→ Logs **are not stored in the DB**, but in the local filesystem.
+
+Typical log path:
+
+```
+/var/lib/rundeck/logs/rundeck/<project>/job/<job-id>/log/<execution-id>.rdlog
+```
+
+The DB (`execution` table) still keeps a **reference** to the log, but not the content itself.
+
+You can confirm by checking `execution.output_filepath` or `execution.output_file` (depends on Rundeck version):
+
+```sql
+SELECT id, output_filepath, status FROM execution WHERE id = 1234;
+```
+
+---
+
+### 3. **External (S3, Azure, etc.) Log Storage**
+
+If configured like this:
+
+```properties
+rundeck.execution.logs.fileStoragePlugin=s3
+```
+
+→ The log files are uploaded to S3 (or another plugin target).
+In this case:
+
+* The `execution_log_state` table stores references and flags (`plugin_name`, `state`, `last_updated`)
+* No raw log data is in the DB
+
+Example:
+
+```sql
+SELECT * FROM execution_log_state WHERE execution_id = 1234;
+```
+
+---
+
+## 🧠 Quick Reference Summary
+
+| Table                       | Contains                                    | When Used                         |
+| --------------------------- | ------------------------------------------- | --------------------------------- |
+| `execution`                 | Job metadata (ID, user, status, timestamps) | Always                            |
+| `rdlog`                     | Actual log text (stdout/stderr)             | Only if DB log storage is enabled |
+| `execution_log_state`       | Log upload and completion state             | Always, for tracking              |
+| `execution.output_filepath` | Log file reference (if filesystem)          | Always if file-based logs         |
+
+---
+
+## ✅ Quick Check Command (to know your mode)
+
+On your Rundeck server:
+
+```bash
+grep "rundeck.execution.logs.fileStoragePlugin" /etc/rundeck/rundeck-config.properties
+```
+
+* `db` → logs are in the Rundeck DB (`rdlog` table)
+* `filesystem` → logs are on disk
+* `s3`, `azure`, etc. → logs are external
+
+---
+
+Would you like me to give you a **ready-to-use SQL query** that returns the *latest 10 job runs* including **log content (if stored in DB)** and **user/job name**?
