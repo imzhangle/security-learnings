@@ -187,3 +187,198 @@ SETMQAUT -m QM1 -t q -n MY.QUEUE -p appuser -put -get
 ```
 
 Let me know if you want examples for **LDAP**, **MQ Appliance**, or **AMS (Advanced Message Security)** integration.
+
+
+
+
+Below is a **practical, security-architect checklist** you can execute **today** (or delegate to the integration team) to **audit IBM MQ Queue Managers and Channels** in the **T24 UAT environment** that is touching **production data** and **partners’ non-prod/sandbox**.
+
+---
+
+## 1. Pre-Requisites (One-Time)
+| Action | Command / Tool |
+|--------|----------------|
+| **MQ Admin access** | `mqm` group membership on the server |
+| **MQSC console** | `runmqsc <QMGR_NAME>` |
+| **SupportPac MO04 (mqscx)** | Optional but powerful scripted checks |
+| **SSL/TLS key store access** | `*.kdb` / `*.jks` + password |
+| **SIEM / logging** | Confirm `ERROR`, `AUTH`, `CHLAUTH` logs go to central log |
+
+---
+
+## 2. Queue Manager Hardening Checklist
+Run inside `runmqsc QMGR_NAME` or script with **mqscx**.
+
+```mqsc
+-- 1. Is the QMGR running in production mode?
+DISPLAY QMGR ALL
+
+-- 2. Channel Authentication (CHLAUTH) – BLOCK * by default
+DISPLAY CHLAUTH(*) WHERE(TYPE EQ BLOCK)
+
+-- 3. No MCAUSER(*) allowed (prevent privilege escalation)
+DISPLAY CHLAUTH(*) WHERE(MCAUSER EQ '*')
+
+-- 4. Connection Authentication (CONNAUTH) enabled
+DISPLAY QMGR CONNAUTH
+-- Should point to an AUTHINFO object with CHCKCLNT(REQUIRED) or OPTIONAL
+
+-- 5. SSL/TLS enforced for all client & server channels
+DISPLAY QMGR SSLFIPS SSLCIPH
+
+-- 6. Queue Manager SSL key repository
+DISPLAY QMGR SSLKEYR
+-- Path must be 600 perms, owned by mqm
+```
+
+### Quick Script (mqscx)
+```bash
+mqscx -n QMGR_UAT <<'EOF'
+DISPLAY QMGR ALL
+DISPLAY CHLAUTH(*) ALL
+DISPLAY AUTHINFO(*) ALL
+DISPLAY QMGR CONNAUTH SSLFIPS SSLCIPH SSLKEYR
+EOF
+```
+
+---
+
+## 3. Channel Security Checklist
+### A. List All Channels
+```mqsc
+DISPLAY CHANNEL(*) WHERE(CHLTYPE EQ SDR OR CHLTYPE EQ SVR OR CHLTYPE EQ CLNTC)
+```
+
+### B. Critical Security Attributes (per channel)
+```mqsc
+DISPLAY CHANNEL(<CHAN_NAME>) ALL | grep -E "SSLCIPH|SSLCAUTH|SSLPEER|CHCKCLNT|MCAUSER|PUTAUT"
+```
+
+| Attribute | Secure Setting |
+|---------|----------------|
+| `SSLCIPH` | `ANY_TLS12_OR_HIGHER` or specific strong cipher |
+| `SSLCAUTH` | `REQUIRED` (mutual TLS) |
+| `SSLPEER` | DN of partner cert (e.g. `CN=partner-sandbox.company.com`) |
+| `CHCKCLNT` | `REQUIRED` (for client channels) |
+| `MCAUSER` | **Never `*`** – use specific MQ user or `''` (blank) |
+| `PUTAUT` | `CTX` or `DEF` – never `ONLYMCA` unless justified |
+| `CHLAUTH` | Mapped to specific IP + cert or user |
+
+### C. CHLAUTH Records (MUST exist for partner channels)
+```mqsc
+-- Block everything first
+SET CHLAUTH(*) TYPE(BLOCK) ACTION(ADD)
+
+-- Allow only partner sandbox IPs + cert
+SET CHLAUTH(PARTNER.UAT.TO.SANDBOX) TYPE(SSLPEER) SSLCERTI('CN=partner-sandbox') +
+     USERSRC(CHANNEL) ADDRESS('203.0.113.50') ACTION(ADD)
+
+-- Allow only specific MQ user
+SET CHLAUTH(PARTNER.UAT.TO.SANDBOX) TYPE(ADDRESSMAP) ADDRESS('203.0.113.50') +
+     MCAUSER('mq_uat_partner') ACTION(ADD)
+```
+
+---
+
+## 4. Verify TLS Certificates
+```bash
+# 1. List certs in key repository
+runmqckm -cert -list -db /var/mq/ssl/qm_uat.kdb -pw <stash>
+
+# 2. Validate partner cert
+openssl s_client -connect partner-sandbox:1414 -CAfile /path/to/truststore.pem
+
+# 3. Check expiry
+runmqckm -cert -details -label partner-sandbox-cert -db /var/mq/ssl/qm_uat.kdb -pw <stash>
+```
+
+**Red flags**:  
+- Self-signed certs  
+- Expired certs  
+- Wildcard certs for sandbox  
+- Missing CA chain
+
+---
+
+## 5. Access Control (Object Authority)
+```mqsc
+-- Who can PUT/GET on queues used by partners?
+DISPLAY QLOCAL(PARTNER.INPUT.Q) AUTHOREV
+DISPLAY QLOCAL(PARTNER.OUTPUT.Q) AUTHOREV
+
+-- Recommended:
+SET AUTHREC PROFILE(PARTNER.INPUT.Q) OBJTYPE(QUEUE) PRINCIPAL('mq_uat_partner') AUTHADD(PUT)
+SET AUTHREC PROFILE(PARTNER.OUTPUT.Q) OBJTYPE(QUEUE) PRINCIPAL('mq_uat_partner') AUTHADD(GET)
+```
+
+---
+
+## 6. Logging & Monitoring
+```mqsc
+-- Enable security events
+ALTER QMGR CHLEV(ENABLED) AUTHOREV(ENABLED)
+
+-- Verify logs
+tail -f /var/mq/qmgrs/QMGR_UAT/errors/AMQERR01.LOG | grep -i "CHLAUTH\|SSL\|AUTH"
+```
+
+Push to **SIEM** (Splunk/ELK) with filters:
+- `AMQ8077` (CHLAUTH block)
+- `AMQ9660` (SSL handshake fail)
+- `AMQ9557` (Auth fail)
+
+---
+
+## 7. UAT-Specific Hardening (Critical for Prod Data)
+| Action | Why |
+|-------|-----|
+| **Separate QMGR** for UAT (`QMGR_UAT`) | Never share with prod |
+| **No prod DB connection** | Use read-replica + masking |
+| **Block prod queues** | `SET AUTHREC PROFILE(SYSTEM.*) ... AUTHREMOVE(ALL)` |
+| **Partner channel points to sandbox IP only** | CHLAUTH + SSLPEER |
+| **Message payload DLP** | Scan for PAN, account # before send |
+
+---
+
+## 8. One-Click Audit Report (Bash + MQSC)
+```bash
+#!/bin/bash
+QM=QMGR_UAT
+echo "=== IBM MQ Security Audit for $QM ===" > mq_audit_$(date +%F).txt
+
+mqscx -n $QM >> mq_audit_$(date +%F).txt <<'EOF'
+DISPLAY QMGR ALL
+DISPLAY CHLAUTH(*) ALL
+DISPLAY CHANNEL(*) WHERE(CHLTYPE EQ CLNTC OR CHLTYPE EQ SVR) ALL
+DISPLAY AUTHINFO(*) ALL
+EOF
+
+echo "=== SSL Cert Expiry ===" >> mq_audit_$(date +%F).txt
+runmqckm -cert -list -db /var/mq/ssl/${QM}.kdb -pw $(cat /var/mq/ssl/${QM}.kdb.sth) >> mq_audit_$(date +%F).txt
+
+echo "Audit saved to mq_audit_$(date +%F).txt"
+```
+
+---
+
+## 9. Immediate Red-Flag Actions (Stop-the-Line)
+| Finding | Action |
+|--------|--------|
+| `MCAUSER(*)` | **Disable channel** immediately |
+| `SSLCAUTH(OPTIONAL)` | **Force mutual TLS** |
+| Prod data in UAT queue | **Purge + mask** |
+| Partner channel to prod IP | **Block in CHLAUTH** |
+
+---
+
+### TL;DR – Security Architect Playbook
+1. **Run `DISPLAY QMGR/CHLAUTH/CHANNEL` → script it**  
+2. **Enforce: CHLAUTH + SSLPEER + MCAUSER + CONNAUTH**  
+3. **Validate certs, expiry, mutual TLS**  
+4. **Lock down queue authorities**  
+5. **Separate QMGR, block prod data flow**  
+6. **Push logs to SIEM, alert on auth fails**
+
+Execute this **today** in UAT, then replicate the same checks in **pre-prod/staging** before any prod cutover.
+
+Need a **template CHLAUTH policy** or **Terraform/Ansible module** for MQ? Let me know.
