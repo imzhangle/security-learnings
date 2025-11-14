@@ -382,3 +382,59 @@ echo "Audit saved to mq_audit_$(date +%F).txt"
 Execute this **today** in UAT, then replicate the same checks in **pre-prod/staging** before any prod cutover.
 
 Need a **template CHLAUTH policy** or **Terraform/Ansible module** for MQ? Let me know.
+
+
+
+**IBM MQ (often abbreviated as IBMQ or seen as IIBMQ in some contexts) integration with other partners/tools for auditing purposes:**
+
+IBM MQ is a robust messaging middleware that supports integration with a wide range of third-party partners and tools, especially for monitoring, logging, security, and auditing message flows (including "outbound" messages to queues, topics, or external systems).
+
+### Common Integration Approaches for Auditing
+- **Native IBM Tools**:
+  - IBM MQ Advanced Message Security (AMS) → Provides end-to-end encryption, signing, and audit trails for messages.
+  - IBM App Connect (formerly Integration Bus/IIB) → Often used alongside MQ for transformation and routing, with built-in audit logging.
+  - IBM Cloud Pak for Integration → Includes MQ and tools for centralized auditing.
+
+- **Third-Party Audit/Monitoring Partners**:
+  - **Splunk, ELK Stack (Elastic), Datadog, Nastel, Avada, BMC, Sysdig** — These SIEM/monitoring tools integrate via MQ's APIs (JMS, .NET, REST) or exit handlers to capture outbound message events, queue depth, user activity, and channel status.
+  - **Security & Compliance Partners** (e.g., Guardium, Imperva) — For data activity monitoring and audit logging of message content/users.
+
+Integration is typically done via:
+- Queue Manager exits (channel exits, message exits)
+- MQ APIs (MQI, JMS, MQ Light)
+- Managed File Transfer (MFT) for auditable file transfers
+- IBM MQ Console or third-party dashboards for real-time views
+
+These produce detailed audit logs showing **users/applications sending outbound messages**, **channels used**, message headers, timestamps, and payload (if configured).
+
+### Command to Show Users and Outbound Channels (Queue Manager Perspective)
+In IBM MQ, "users" are often authenticated via **channel authentication records (CHLAUTH)** and **connection authentication (CONNAUTH)**. Outbound channels are typically **sender (SDR)**, **server (SVR)**, or **client (CLNTCONN)** channels.
+
+Useful `runmqsc` commands (run as MQ admin on the queue manager):
+
+1. **Display all active/outbound channels and connected users/applications**:
+   ```
+   DISPLAY CHSTATUS(*) WHERE(CHLTYPE EQ SDR OR CHLTYPE EQ SVR OR CHLTYPE EQ CLNTCONN) CURSTATUS RUNNING CONNAME USERID APPLTAG
+   ```
+   - Shows channel name, remote host (CONNAME), user ID (USERID), and application (APPLTAG) sending/receiving outbound.
+
+2. **Display current connections (users/apps connected, including outbound)**:
+   ```
+   DISPLAY CONN(*) WHERE(CHANNEL NE '') TYPE(*) USERID APPLTAG CHANNEL
+   ```
+   - Lists every active connection with user ID, application, and channel.
+
+3. **Show blocked/adopted users or audit events**:
+   ```
+   DISPLAY CHLAUTH(*) 
+   ```
+   - For rules mapping/adopting users on outbound channels.
+
+4. **Full channel details**:
+   ```
+   DISPLAY CHANNEL(*) CHLTYPE SDR WHERE(CURSTATUS EQ RUNNING)
+   ```
+
+These commands give a clear view of **who (user/app)** is using **which outbound channel** right now — perfect for auditing.
+
+If you need integration code examples (e.g., JMS, Python with pymqi) or help with a specific partner/tool, provide more details!
