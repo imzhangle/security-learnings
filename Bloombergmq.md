@@ -438,3 +438,186 @@ Useful `runmqsc` commands (run as MQ admin on the queue manager):
 These commands give a clear view of **who (user/app)** is using **which outbound channel** right now — perfect for auditing.
 
 If you need integration code examples (e.g., JMS, Python with pymqi) or help with a specific partner/tool, provide more details!
+
+
+
+When **two different environments (DEV + Secure UAT)** write into **the same queue** on a shared MQ, the main risks are:
+
+* **Environment cross-contamination**
+* **Security level mismatch**
+* **Auditability loss**
+* **A weaker environment compromising a stronger one**
+* **Data leaks between environments**
+* **Unpredictable message behavior for the consumer**
+
+But you *can* mitigate this — there are several safe patterns depending on what flexibility you have.
+
+Below is the clearest way to fix the situation.
+
+---
+
+# ✅ **Option 1 — Use Separate Queues (Best Practice)**
+
+If possible, split the traffic:
+
+```
+APP_DEV → QUEUE.APP.DEV
+APP_UAT → QUEUE.APP.UAT
+Bottomline DEV reads QUEUE.APP.DEV only
+```
+
+UAT messages **should never** flow into DEV.
+This is the cleanest and recommended method.
+
+✔ Strongest isolation
+✔ Best for audit and compliance
+✔ Prevents UAT → DEV data leakage
+✔ Simple MQ configuration
+
+---
+
+# 🔐 If you CANNOT split queues (for now)
+
+Here are practical mitigations so you can still operate safely.
+
+---
+
+# ✅ **Option 2 — Use two channels with different MCAUSER identities**
+
+Have DEV app connect via:
+
+```
+CHANNEL: CH.DEV.APP
+MCAUSER: mqt24_dev
+```
+
+Have UAT app connect via:
+
+```
+CHANNEL: CH.UAT.APP
+MCAUSER: mqt24_uat
+```
+
+Then restrict permissions:
+
+```
+QUEUE.APP  → PUT only for mqt24_dev and mqt24_uat
+Admin rights → none
+```
+
+### Why this helps:
+
+* MQ can now audit who sent what
+* Dev compromise doesn’t automatically affect UAT
+* You can throttle, block or trace one system without affecting the other
+* No shared identity → lower risk
+
+This is the **second best** approach.
+
+---
+
+# 🧩 **Option 3 — Add mandatory message headers to identify environment**
+
+If they *must* write to a single queue:
+
+Each app must set a required property:
+
+```
+ENV=DEV
+or
+ENV=UAT
+```
+
+Or an MQRFH2 header field (e.g., `usr.Env`).
+
+Then the Bottomline DEV consumer **rejects** any message not marked `ENV=DEV`.
+
+This prevents accidental poisoning of DEV processing.
+
+⚠ This works **only** if Bottomline validates messages.
+
+---
+
+# 🔐 **Option 4 — MQAMS or MQ message encryption**
+
+Secure UAT can encrypt its messages at the message level.
+
+Bottomline DEV cannot decrypt them unless allowed.
+
+This is heavy but secure.
+
+---
+
+# 🚨 **Option 5 — Apply CHLAUTH rules to control who can write**
+
+Example:
+
+```
+CHLAUTH(CH.DEV.APP) TYPE(ADDRESSMAP) ADDRESS('dev-host') USERSRC(MAP) MCAUSER('mqt24_dev')
+CHLAUTH(CH.UAT.APP) TYPE(ADDRESSMAP) ADDRESS('uat-host') USERSRC(MAP) MCAUSER('mqt24_uat')
+```
+
+And for the queue:
+
+```
+SET AUTHREC OBJTYPE(QUEUE) PROFILE('QUEUE.APP')
+   GROUP('mqt24_dev') AUTHADD(PUT)
+SET AUTHREC OBJTYPE(QUEUE) PROFILE('QUEUE.APP')
+   GROUP('mqt24_uat') AUTHADD(PUT)
+```
+
+UAT and DEV cannot impersonate each other’s hosts.
+
+✔ Host isolation
+✔ Identity isolation
+✔ Same queue still possible
+
+---
+
+# 🚫 What **NOT** to do
+
+* **Do not use a shared identity (mqt24) for DEV + UAT**
+* **Do not put UAT data in DEV queues unless masks**
+* **Do not give queue or channel admin rights to application users**
+* **Do not rely on hostname-only security**
+
+---
+
+# ⭐ Recommended Solution Summary
+
+To safely support your existing setup:
+
+### **Minimum safe setup**
+
+1. Create two MCAUSERs:
+
+   * `mqt24_dev`
+   * `mqt24_uat`
+
+2. Create two channels:
+
+   * `CH.DEV.APP`
+   * `CH.UAT.APP`
+
+3. Use CHLAUTH to bind each to its source host.
+
+4. Queue permissions:
+
+   ```
+   PUT only for both mqt24_dev and mqt24_uat
+   ```
+
+   No admin permissions.
+
+5. Consumer (Bottomline DEV) validates messages and drops anything from UAT.
+
+---
+
+# If you want, I can produce:
+
+* A secure MQSC configuration
+* A recommended CHLAUTH design
+* A queue-level permission model
+* A clean diagram showing the correct flow
+
+Just tell me which option you want to implement.
